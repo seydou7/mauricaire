@@ -65,6 +65,8 @@ const schema = defineSchema(
       role: v.optional(roleValidator), // role of the user. do not remove
       phone: v.optional(v.string()),
       city: v.optional(v.string()),
+      latitude: v.optional(v.number()),
+      longitude: v.optional(v.number()),
       isProvider: v.optional(v.boolean()),
       specialty: v.optional(specialtyValidator),
       licenseNumber: v.optional(v.string()),
@@ -97,9 +99,11 @@ const schema = defineSchema(
     appointments: defineTable({
       patientId: v.id("users"),
       providerId: v.id("providers"),
+      serviceType: v.optional(v.string()),
       date: v.string(),
       time: v.string(),
       status: appointmentStatusValidator,
+      paymentMethod: v.optional(v.literal("cash")),
       notes: v.optional(v.string()),
       address: v.optional(v.string()),
       duration: v.optional(v.number()), // in minutes

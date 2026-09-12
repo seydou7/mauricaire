@@ -11,6 +11,7 @@ import {
 import {
   Activity,
   AlertCircle,
+  Bell,
   Calendar,
   CalendarCheck,
   CalendarDays,
@@ -27,6 +28,7 @@ import {
   Filter,
   Heart,
   HeartPulse,
+  History,
   LogOut,
   Mail,
   MapPin,
@@ -46,7 +48,9 @@ import {
   Users,
   Video,
   X,
+  XCircle,
   ArrowUpRight,
+  ArrowLeft,
   DollarSign,
   Pill,
   Briefcase,
@@ -57,10 +61,24 @@ import { Link, useNavigate } from "react-router";
 import { useState } from "react";
 import logo from "@/assets/logo.svg";
 import { Separator } from "@/components/ui/separator";
+import { BookingStepper } from "@/components/BookingStepper";
+import { useAppointments } from "@/hooks/use-appointments";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import { ProviderAvailability } from "@/components/ProviderAvailability";
+import { NewMessageModal } from "@/components/NewMessageModal";
+import { ReviewModal } from "@/components/ReviewModal";
+import { AppointmentDetailsModal } from "@/components/AppointmentDetailsModal";
 
 // ===================== TYPES =====================
 type UserRole = "patient" | "professionnel";
-type DashboardSection = "apercu" | "planning" | "reseau" | "messages" | "profil";
+type DashboardSection = "apercu" | "planning" | "reseau" | "messages" | "profil" | "demandes" | "patient-details";
 
 interface PatientInfo {
   id: number;
@@ -124,6 +142,7 @@ function getNavItems(role: UserRole): { id: DashboardSection; label: string; ico
 
   return [
     ...base.slice(0, 2),
+    { id: "demandes" as const, label: "Mes demandes", icon: FileText },
     { id: "reseau" as const, label: "Mes patients", icon: Users },
     ...base.slice(2),
   ];
@@ -179,9 +198,9 @@ function SidebarContent({
                 onNavigate(item.id);
                 onCloseMobile();
               }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden ${
                 activeSection === item.id
-                  ? "bg-primary/10 text-primary shadow-sm"
+                  ? "bg-gradient-to-r from-primary/15 to-transparent text-primary shadow-[inset_2px_0_0_0_var(--theme-primary)]"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               }`}
             >
@@ -210,9 +229,9 @@ function SidebarContent({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-foreground truncate">
-              {user?.name || "Utilisateur"}
+              {role === "professionnel" && user?.name === "Patient Test" ? "Praticien" : user?.name || "Utilisateur"}
             </p>
-            <p className="text-[10px] text-muted-foreground">{role === "patient" ? "Patient" : "Professionnel de santé"} • Nouakchott</p>
+            <p className="text-[10px] text-muted-foreground">{role === "patient" ? "Patient" : "Aide-soignant"} • Nouakchott</p>
           </div>
         </div>
         <button
@@ -231,8 +250,11 @@ function SidebarContent({
 export default function Dashboard() {
   const { isLoading, isAuthenticated, user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [role, setRole] = useState<UserRole>("patient");
+  const [role, setRole] = useState<UserRole>(() => {
+    return (localStorage.getItem("userRole") as UserRole) || "patient";
+  });
   const [activeSection, setActiveSection] = useState<DashboardSection>("apercu");
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const initials = user?.name
@@ -345,7 +367,7 @@ export default function Dashboard() {
       {/* ==================== MAIN CONTENT ==================== */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b border-border/30">
+        <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b border-primary/5 shadow-sm shadow-primary/[0.02]">
           <div className="flex items-center justify-between h-14 px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
               <button
@@ -362,68 +384,35 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Role toggle */}
-              <div className="hidden sm:flex items-center bg-muted/60 border border-border/30 rounded-lg p-0.5 shadow-sm">
-                <button
-                  onClick={() => setRole("patient")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    role === "patient"
-                      ? "bg-white dark:bg-primary/20 text-primary shadow-sm border border-border/20"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Heart className={`h-3.5 w-3.5 ${role === "patient" ? "text-primary" : ""}`} />
-                  Patient
-                </button>
-                <button
-                  onClick={() => setRole("professionnel")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    role === "professionnel"
-                      ? "bg-white dark:bg-primary/20 text-primary shadow-sm border border-border/20"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Briefcase className={`h-3.5 w-3.5 ${role === "professionnel" ? "text-primary" : ""}`} />
-                  Professionnel
-                </button>
-              </div>
-
-              <button className="relative p-2 rounded-lg hover:bg-accent transition-colors">
+              {/* Role toggle removed */}
+              <button className="relative p-2 rounded-full hover:bg-primary/5 transition-colors">
                 <BellIcon />
                 <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive ring-2 ring-background" />
               </button>
-              <button className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-accent transition-colors">
-                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-semibold text-primary">
-                  {initials}
-                </div>
-                <ChevronDown className="h-3 w-3 text-muted-foreground" />
-              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-primary/5 transition-colors border border-transparent hover:border-primary/10 outline-none">
+                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-semibold text-primary">
+                      {initials}
+                    </div>
+                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setActiveSection("profil")} className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    Mon Profil
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Déconnexion
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          </div>
-          {/* Mobile role toggle */}
-          <div className="sm:hidden flex items-center justify-center gap-1 px-4 pb-2">
-            <button
-              onClick={() => setRole("patient")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
-                role === "patient"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground"
-              }`}
-            >
-              <Heart className="h-3.5 w-3.5" />
-              Patient
-            </button>
-            <button
-              onClick={() => setRole("professionnel")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
-                role === "professionnel"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground"
-              }`}
-            >
-              <Briefcase className="h-3.5 w-3.5" />
-              Professionnel
-            </button>
           </div>
         </header>
 
@@ -437,9 +426,11 @@ export default function Dashboard() {
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
-              {activeSection === "apercu" && <Apercu role={role} user={user} initials={initials} />}
+              {activeSection === "apercu" && <Apercu role={role} user={user} initials={initials} onNavigate={setActiveSection} />}
               {activeSection === "planning" && <Planning role={role} user={user} />}
-              {activeSection === "reseau" && <ReseauSection role={role} user={user} />}
+              {activeSection === "demandes" && <DemandesSection />}
+              {activeSection === "reseau" && <ReseauSection role={role} user={user} onNavigateToPatient={(id) => { setSelectedPatientId(id); setActiveSection("patient-details"); }} />}
+              {activeSection === "patient-details" && selectedPatientId && <PatientDetailsSection patientId={selectedPatientId} onBack={() => setActiveSection("reseau")} />}
               {activeSection === "messages" && <MessagesSection role={role} user={user} />}
               {activeSection === "profil" && <ProfilSection role={role} user={user} initials={initials} signOut={handleSignOut} />}
             </motion.div>
@@ -471,12 +462,13 @@ function BellIcon() {
 }
 
 // ===================== VUE D'ENSEMBLE =====================
-function Apercu({ role, user, initials }: { role: UserRole; user: any; initials: string }) {
+function Apercu({ role, user, initials, onNavigate }: { role: UserRole; user: any; initials: string; onNavigate: (id: DashboardSection) => void }) {
   if (role === "patient") return <ApercuPatient user={user} initials={initials} />;
-  return <ApercuProfessionnel user={user} initials={initials} />;
+  return <ApercuProfessionnel user={user} initials={initials} onNavigate={onNavigate} />;
 }
 
 function ApercuPatient({ user, initials }: { user: any; initials: string }) {
+  const navigate = useNavigate();
   const today = new Date().toLocaleDateString("fr-FR", {
     weekday: "long",
     day: "numeric",
@@ -491,9 +483,9 @@ function ApercuPatient({ user, initials }: { user: any; initials: string }) {
   ];
 
   const myProviders = [
-    { name: "Dr. Camara", specialty: "Médecin généraliste", rating: 4.9, consultations: 12, image: "DC", nextVisit: "Mer. 16 juil." },
-    { name: "Fatima O.", specialty: "Infirmière", rating: 4.8, consultations: 8, image: "FO", nextVisit: "Lun. 14 juil." },
-    { name: "Mariam D.", specialty: "Kinésithérapeute", rating: 4.7, consultations: 6, image: "MD", nextVisit: "Ven. 18 juil." },
+    { name: "Dr. Camara", specialty: "Médecin généraliste", rating: 4.9, consultations: 12, image: "https://i.pravatar.cc/150?img=11", nextVisit: "Mer. 16 juil.", reviews: 128, distance: "1.2 km", price: "15 000 MRU" },
+    { name: "Fatima O.", specialty: "Infirmière", rating: 4.8, consultations: 8, image: "https://i.pravatar.cc/150?img=5", nextVisit: "Lun. 14 juil.", reviews: 94, distance: "2.5 km", price: "8 000 MRU" },
+    { name: "Mariam D.", specialty: "Kinésithérapeute", rating: 4.7, consultations: 6, image: "https://i.pravatar.cc/150?img=9", nextVisit: "Ven. 18 juil.", reviews: 67, distance: "3.0 km", price: "12 000 MRU" },
   ];
 
   const appointments = [
@@ -526,11 +518,13 @@ function ApercuPatient({ user, initials }: { user: any; initials: string }) {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" className="rounded-xl gap-1.5 shadow-lg shadow-primary/20">
-              <CalendarCheck className="h-4 w-4" />
-              Nouveau rendez-vous
-            </Button>
-            <Button size="sm" variant="outline" className="rounded-xl gap-1.5">
+            <BookingStepper>
+              <Button size="sm" className="rounded-xl gap-1.5 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-primary-foreground">
+                <CalendarCheck className="h-4 w-4" />
+                Nouveau rendez-vous
+              </Button>
+            </BookingStepper>
+            <Button size="sm" variant="outline" className="rounded-xl gap-1.5 border-primary/20 hover:bg-primary/5">
               <Search className="h-4 w-4" />
               Trouver un soignant
             </Button>
@@ -549,8 +543,11 @@ function ApercuPatient({ user, initials }: { user: any; initials: string }) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06, duration: 0.4 }}
             >
-              <Card className="border-border/40 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
-                <CardContent className="p-5">
+              <Card className="border-primary/10 bg-gradient-to-br from-card to-card/50 backdrop-blur-xl shadow-lg shadow-primary/5 hover:shadow-primary/10 hover:-translate-y-1 transition-all duration-300 overflow-hidden relative">
+                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                  <Icon className="h-24 w-24" />
+                </div>
+                <CardContent className="p-5 relative z-10">
                   <div className="flex items-start justify-between">
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -576,7 +573,7 @@ function ApercuPatient({ user, initials }: { user: any; initials: string }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.4 }}
         >
-          <Card className="border-border/40 shadow-sm">
+          <Card className="border-border/40 shadow-md shadow-primary/5 bg-card/80 backdrop-blur-xl hover:border-primary/10 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-4">
               <div>
                 <CardTitle className="text-base flex items-center gap-2">
@@ -594,14 +591,19 @@ function ApercuPatient({ user, initials }: { user: any; initials: string }) {
                 {myProviders.map((prov, i) => (
                   <motion.div
                     key={prov.name}
+                    onClick={() => navigate('/provider/1')}
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.06 }}
-                    className="flex items-center justify-between p-3 rounded-xl bg-muted/30 hover:bg-muted/50 border border-border/30 transition-all group cursor-pointer"
+                    className="flex items-center justify-between p-3 rounded-2xl bg-card hover:bg-primary/[0.02] border border-border/40 hover:border-primary/20 hover:shadow-md hover:shadow-primary/5 transition-all duration-300 group cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                        {prov.image}
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary overflow-hidden">
+                        {prov.image.startsWith('http') ? (
+                          <img src={prov.image} alt={prov.name} className="h-full w-full object-cover" />
+                        ) : (
+                          prov.image
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-medium">{prov.name}</p>
@@ -628,7 +630,7 @@ function ApercuPatient({ user, initials }: { user: any; initials: string }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.4 }}
         >
-          <Card className="border-border/40 shadow-sm">
+          <Card className="border-border/40 shadow-md shadow-primary/5 bg-card/80 backdrop-blur-xl hover:border-primary/10 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-4">
               <div>
                 <CardTitle className="text-base flex items-center gap-2">
@@ -644,40 +646,43 @@ function ApercuPatient({ user, initials }: { user: any; initials: string }) {
             <CardContent>
               <div className="space-y-2">
                 {appointments.map((appt, i) => (
-                  <motion.div
-                    key={appt.id}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.06 }}
-                    className="flex items-center justify-between p-3 rounded-xl bg-muted/30 hover:bg-muted/50 border border-border/30 transition-all group cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                        {appt.name.split(" ").map((n: string) => n[0]).join("")}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{appt.name}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                          <span>{appt.type}</span>
-                          <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
-                          <span>{appt.date}</span>
-                          <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
-                          <span>{appt.time}</span>
+                  <AppointmentDetailsModal key={appt.id} appointment={appt} role="patient">
+                    <motion.div
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.06 }}
+                      className="flex items-center justify-between p-3 rounded-2xl bg-card hover:bg-primary/[0.02] border border-border/40 hover:border-primary/20 hover:shadow-md hover:shadow-primary/5 transition-all duration-300 group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                          {appt.name.split(" ").map((n: string) => n[0]).join("")}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{appt.name}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                            <span>{appt.type}</span>
+                            <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                            <span>{appt.date}</span>
+                            <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                            <span>{appt.time}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <Badge
-                      variant={appt.status === "confirme" ? "default" : "secondary"}
-                      className="text-[10px] px-2 py-0.5"
-                    >
-                      {appt.status === "confirme" ? "Confirmé" : "En attente"}
-                    </Badge>
-                  </motion.div>
+                      <Badge
+                        variant={appt.status === "confirme" ? "default" : "secondary"}
+                        className="text-[10px] px-2 py-0.5"
+                      >
+                        {appt.status === "confirme" ? "Confirmé" : "En attente"}
+                      </Badge>
+                    </motion.div>
+                  </AppointmentDetailsModal>
                 ))}
-                <Button variant="outline" size="sm" className="w-full mt-2 rounded-xl border-dashed border-border/50 gap-1.5">
-                  <Plus className="h-3.5 w-3.5" />
-                  Planifier une consultation
-                </Button>
+                <BookingStepper>
+                  <Button variant="outline" size="sm" className="w-full mt-2 rounded-xl border-dashed border-primary/40 text-primary hover:bg-primary/5 gap-1.5">
+                    <Plus className="h-3.5 w-3.5" />
+                    Planifier une consultation
+                  </Button>
+                </BookingStepper>
               </div>
             </CardContent>
           </Card>
@@ -732,7 +737,9 @@ function ApercuPatient({ user, initials }: { user: any; initials: string }) {
   );
 }
 
-function ApercuProfessionnel({ user, initials }: { user: any; initials: string }) {
+function ApercuProfessionnel({ user, initials, onNavigate }: { user: any; initials: string; onNavigate: (id: DashboardSection) => void }) {
+  const navigate = useNavigate();
+  const { pendingDemandes } = useAppointments();
   const today = new Date().toLocaleDateString("fr-FR", {
     weekday: "long",
     day: "numeric",
@@ -783,7 +790,7 @@ function ApercuProfessionnel({ user, initials }: { user: any; initials: string }
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-                Bonjour, {user?.name?.split(" ")[0] || "Cher Praticien"}
+                Bonjour, {user?.name === "Patient Test" ? "Praticien" : (user?.name?.split(" ")[0] || "Cher Praticien")}
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {today.charAt(0).toUpperCase() + today.slice(1)} • 3 consultations aujourd'hui
@@ -791,9 +798,14 @@ function ApercuProfessionnel({ user, initials }: { user: any; initials: string }
             </div>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" className="rounded-xl gap-1.5 shadow-lg shadow-primary/20">
-              <CalendarPlus className="h-4 w-4" />
-              Nouveau créneau
+            <Button size="sm" onClick={() => onNavigate("demandes")} className="rounded-xl gap-1.5 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-primary-foreground relative">
+              {pendingDemandes.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white shadow-sm ring-2 ring-background">
+                  {pendingDemandes.length}
+                </span>
+              )}
+              <Bell className="h-4 w-4" />
+              Mes demandes
             </Button>
             <Button size="sm" variant="outline" className="rounded-xl gap-1.5">
               <Users className="h-4 w-4" />
@@ -814,8 +826,11 @@ function ApercuProfessionnel({ user, initials }: { user: any; initials: string }
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06, duration: 0.4 }}
             >
-              <Card className="border-border/40 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300">
-                <CardContent className="p-5">
+              <Card className="border-primary/10 bg-gradient-to-br from-card to-card/50 backdrop-blur-xl shadow-lg shadow-primary/5 hover:shadow-primary/10 hover:-translate-y-1 transition-all duration-300 overflow-hidden relative">
+                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                  <Icon className="h-24 w-24" />
+                </div>
+                <CardContent className="p-5 relative z-10">
                   <div className="flex items-start justify-between">
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -848,7 +863,7 @@ function ApercuProfessionnel({ user, initials }: { user: any; initials: string }
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.4 }}
         >
-          <Card className="border-border/40 shadow-sm">
+          <Card className="border-border/40 shadow-md shadow-primary/5 bg-card/80 backdrop-blur-xl hover:border-primary/10 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-4">
               <div>
                 <CardTitle className="text-base flex items-center gap-2">
@@ -864,31 +879,32 @@ function ApercuProfessionnel({ user, initials }: { user: any; initials: string }
             <CardContent>
               <div className="space-y-2">
                 {appointments.map((appt, i) => (
-                  <motion.div
-                    key={appt.id}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.06 }}
-                    className="flex items-center justify-between p-3 rounded-xl bg-muted/30 hover:bg-muted/50 border border-border/30 transition-all group cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="text-center min-w-[48px]">
-                        <p className="text-xs font-bold text-primary">{appt.time}</p>
-                        <p className="text-[10px] text-muted-foreground">{appt.duration}</p>
-                      </div>
-                      <div className="h-8 w-[2px] bg-primary/20 rounded-full" />
-                      <div>
-                        <p className="text-sm font-medium">{appt.patient}</p>
-                        <p className="text-xs text-muted-foreground">{appt.type}</p>
-                      </div>
-                    </div>
-                    <Badge
-                      variant={appt.status === "confirme" ? "default" : "secondary"}
-                      className="text-[10px] px-2 py-0.5"
+                  <AppointmentDetailsModal key={appt.id} appointment={appt} role="professionnel">
+                    <motion.div
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.06 }}
+                      className="flex items-center justify-between p-3 rounded-2xl bg-card hover:bg-primary/[0.02] border border-border/40 hover:border-primary/20 hover:shadow-md hover:shadow-primary/5 transition-all duration-300 group cursor-pointer"
                     >
-                      {appt.status === "confirme" ? "Confirmé" : "En attente"}
-                    </Badge>
-                  </motion.div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-center min-w-[48px]">
+                          <p className="text-xs font-bold text-primary">{appt.time}</p>
+                          <p className="text-[10px] text-muted-foreground">{appt.duration}</p>
+                        </div>
+                        <div className="h-8 w-[2px] bg-primary/20 rounded-full" />
+                        <div>
+                          <p className="text-sm font-medium">{appt.patient}</p>
+                          <p className="text-xs text-muted-foreground">{appt.type}</p>
+                        </div>
+                      </div>
+                      <Badge
+                        variant={appt.status === "confirme" ? "default" : "secondary"}
+                        className="text-[10px] px-2 py-0.5"
+                      >
+                        {appt.status === "confirme" ? "Confirmé" : "À confirmer"}
+                      </Badge>
+                    </motion.div>
+                  </AppointmentDetailsModal>
                 ))}
                 <Button variant="outline" size="sm" className="w-full mt-2 rounded-xl border-dashed border-border/50 gap-1.5">
                   <Plus className="h-3.5 w-3.5" />
@@ -905,7 +921,7 @@ function ApercuProfessionnel({ user, initials }: { user: any; initials: string }
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.4 }}
         >
-          <Card className="border-border/40 shadow-sm">
+          <Card className="border-border/40 shadow-md shadow-primary/5 bg-card/80 backdrop-blur-xl hover:border-primary/10 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between pb-4">
               <div>
                 <CardTitle className="text-base flex items-center gap-2">
@@ -927,7 +943,7 @@ function ApercuProfessionnel({ user, initials }: { user: any; initials: string }
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className="flex items-start gap-3 py-3 border-b border-border/20 last:border-0"
+                    className="flex items-start gap-3 py-3 px-2 rounded-xl hover:bg-muted/30 transition-colors border-b border-border/20 last:border-0"
                   >
                     <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
                       act.type === "check" ? "bg-emerald-100 text-emerald-600" :
@@ -979,6 +995,7 @@ function ApercuProfessionnel({ user, initials }: { user: any; initials: string }
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.08 }}
+                  onClick={() => navigate(`/patient/1`)}
                   className="flex items-center gap-3 p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/20 transition-all cursor-pointer group"
                 >
                   <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
@@ -1001,22 +1018,16 @@ function ApercuProfessionnel({ user, initials }: { user: any; initials: string }
 
 // ===================== PLANNING =====================
 function Planning({ role, user }: { role: UserRole; user: any }) {
+  const navigate = useNavigate();
   const weekDays = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+  const { appointments: proAppointments } = useAppointments();
 
   const patientAppointments = [
-    { day: "Lun 14", time: "09:00", name: "Fatima O.", type: "Infirmière", duration: "1h" },
-    { day: "Lun 14", time: "11:00", name: "Moussa K.", type: "Aide-soignant", duration: "45min" },
-    { day: "Mer 16", time: "14:30", name: "Dr. Ahmed S.", type: "Médecin", duration: "30min" },
-    { day: "Ven 18", time: "10:00", name: "Mariam D.", type: "Kinésithérapeute", duration: "1h" },
-    { day: "Sam 19", time: "08:30", name: "Dr. Camara", type: "Médecin", duration: "45min" },
-  ];
-
-  const proAppointments = [
-    { day: "Lun 14", time: "09:00", name: "Aïcha M.", type: "Consultation diabète", duration: "1h" },
-    { day: "Lun 14", time: "11:00", name: "Mohamed L.", type: "Rééducation post-op", duration: "45min" },
-    { day: "Mer 16", time: "14:30", name: "Mariam T.", type: "Soins palliatifs", duration: "1h" },
-    { day: "Ven 18", time: "10:00", name: "Fatimata D.", type: "Consultation hypertension", duration: "30min" },
-    { day: "Sam 19", time: "08:30", name: "Sidi O.", type: "Kinésithérapie lombaire", duration: "45min" },
+    { day: "Lun 14", time: "09:00", name: "Fatima O.", type: "Infirmière", duration: "1h", status: "Terminé" },
+    { day: "Mar 15", time: "11:00", name: "Moussa K.", type: "Aide-soignant", duration: "45min", status: "Terminé" },
+    { day: "Mer 16", time: "14:30", name: "Dr. Ahmed S.", type: "Médecin", duration: "30min", status: "À venir" },
+    { day: "Ven 18", time: "10:00", name: "Mariam D.", type: "Kinésithérapeute", duration: "1h", status: "À venir" },
+    { day: "Sam 19", time: "08:30", name: "Dr. Camara", type: "Médecin", duration: "45min", status: "À venir" },
   ];
 
   const appointments = role === "patient" ? patientAppointments : proAppointments;
@@ -1035,10 +1046,19 @@ function Planning({ role, user }: { role: UserRole; user: any }) {
           <Button variant="outline" size="sm" className="rounded-lg">
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button size="sm" className="rounded-lg gap-1.5">
-            <CalendarPlus className="h-4 w-4" />
-            {role === "patient" ? "Nouveau rdv" : "Nouveau créneau"}
-          </Button>
+          {role === "patient" ? (
+            <BookingStepper>
+              <Button size="sm" className="rounded-lg gap-1.5">
+                <CalendarPlus className="h-4 w-4" />
+                Nouveau rdv
+              </Button>
+            </BookingStepper>
+          ) : (
+            <Button size="sm" className="rounded-lg gap-1.5">
+              <CalendarPlus className="h-4 w-4" />
+              Nouveau créneau
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1066,7 +1086,8 @@ function Planning({ role, user }: { role: UserRole; user: any }) {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="flex items-center justify-between p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/20 transition-all"
+                onClick={role === "professionnel" ? () => navigate(`/patient/1`) : undefined}
+                className={`flex items-center justify-between p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/20 transition-all ${role === "professionnel" ? "cursor-pointer" : ""}`}
               >
                 <div className="flex items-center gap-4">
                   <div className="text-center min-w-[60px]">
@@ -1079,9 +1100,19 @@ function Planning({ role, user }: { role: UserRole; user: any }) {
                     <p className="text-xs text-muted-foreground">{appt.type} • {appt.duration}</p>
                   </div>
                 </div>
-                <Badge variant="outline" className="text-[10px]">
-                  {appt.duration}
-                </Badge>
+                <div className="flex flex-col items-end gap-2">
+                  <Badge variant="outline" className={`text-[10px] ${(appt as any).status === "Terminé" ? "bg-muted/50" : "bg-primary/10 text-primary border-primary/20"}`}>
+                    {(appt as any).status || appt.duration}
+                  </Badge>
+                  {role === "patient" && (appt as any).status === "Terminé" && (
+                    <ReviewModal providerName={appt.name}>
+                      <Button variant="outline" size="sm" className="h-7 text-[10px] px-2 rounded-lg gap-1 border-yellow-400/50 hover:bg-yellow-400/10 hover:text-yellow-600 text-yellow-600 transition-colors">
+                        <Star className="h-3 w-3" />
+                        Laisser un avis
+                      </Button>
+                    </ReviewModal>
+                  )}
+                </div>
               </motion.div>
             ))}
           </div>
@@ -1091,20 +1122,21 @@ function Planning({ role, user }: { role: UserRole; user: any }) {
   );
 }
 
-// ===================== RÉSEAU (Soignants pour patient / Patients pour pro) =====================
-function ReseauSection({ role, user }: { role: UserRole; user: any }) {
+// ===================== RÉSEAU SECTION =====================
+function ReseauSection({ role, user, onNavigateToPatient }: { role: UserRole; user: any; onNavigateToPatient?: (id: string) => void }) {
   if (role === "patient") return <SoignantsSection />;
-  return <MesPatientsSection />;
+  return <MesPatientsSection onNavigateToPatient={onNavigateToPatient} />;
 }
 
 function SoignantsSection() {
+  const navigate = useNavigate();
   const providers: ProviderInfo[] = [
-    { id: 1, name: "Dr. Camara", specialty: "Médecin généraliste", rating: 4.9, reviews: 128, distance: "1.2 km", availability: "Disponible", phone: "+222 11 22 33 44", price: "15 000 MRU", image: "DC" },
-    { id: 2, name: "Fatima O.", specialty: "Infirmière", rating: 4.8, reviews: 94, distance: "2.5 km", availability: "Disponible", phone: "+222 22 33 44 55", price: "8 000 MRU", image: "FO" },
-    { id: 3, name: "Mariam D.", specialty: "Kinésithérapeute", rating: 4.7, reviews: 67, distance: "3.0 km", availability: "Complet cette semaine", phone: "+222 33 44 55 66", price: "12 000 MRU", image: "MD" },
-    { id: 4, name: "Dr. Ahmed S.", specialty: "Médecin généraliste", rating: 4.9, reviews: 203, distance: "0.8 km", availability: "Disponible", phone: "+222 44 55 66 77", price: "18 000 MRU", image: "AS" },
-    { id: 5, name: "Aminata D.", specialty: "Aide-soignante", rating: 4.6, reviews: 52, distance: "4.1 km", availability: "Disponible", phone: "+222 55 66 77 88", price: "5 000 MRU", image: "AD" },
-    { id: 6, name: "Dr. Souleymane B.", specialty: "Pédiatre", rating: 4.8, reviews: 156, distance: "2.0 km", availability: "Disponible", phone: "+222 66 77 88 99", price: "16 000 MRU", image: "SB" },
+    { id: 1, name: "Dr. Camara", specialty: "Médecin généraliste", rating: 4.9, reviews: 128, distance: "1.2 km", availability: "Disponible", phone: "+222 11 22 33 44", price: "15 000 MRU", image: "https://i.pravatar.cc/150?img=11" },
+    { id: 2, name: "Fatima O.", specialty: "Infirmière", rating: 4.8, reviews: 94, distance: "2.5 km", availability: "Disponible", phone: "+222 22 33 44 55", price: "8 000 MRU", image: "https://i.pravatar.cc/150?img=5" },
+    { id: 3, name: "Mariam D.", specialty: "Kinésithérapeute", rating: 4.7, reviews: 67, distance: "3.0 km", availability: "Complet cette semaine", phone: "+222 33 44 55 66", price: "12 000 MRU", image: "https://i.pravatar.cc/150?img=9" },
+    { id: 4, name: "Dr. Ahmed S.", specialty: "Médecin généraliste", rating: 4.9, reviews: 203, distance: "0.8 km", availability: "Disponible", phone: "+222 44 55 66 77", price: "18 000 MRU", image: "https://i.pravatar.cc/150?img=12" },
+    { id: 5, name: "Aminata D.", specialty: "Aide-soignante", rating: 4.6, reviews: 52, distance: "4.1 km", availability: "Disponible", phone: "+222 55 66 77 88", price: "5 000 MRU", image: "https://i.pravatar.cc/150?img=20" },
+    { id: 6, name: "Dr. Souleymane B.", specialty: "Pédiatre", rating: 4.8, reviews: 156, distance: "2.0 km", availability: "Disponible", phone: "+222 66 77 88 99", price: "16 000 MRU", image: "https://i.pravatar.cc/150?img=68" },
   ];
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -1119,6 +1151,21 @@ function SoignantsSection() {
     return matchesSearch && matchesFilter;
   });
 
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationActive, setLocationActive] = useState(false);
+
+  const handleLocate = () => {
+    if (locationActive) {
+      setLocationActive(false);
+      return;
+    }
+    setIsLocating(true);
+    setTimeout(() => {
+      setIsLocating(false);
+      setLocationActive(true);
+    }, 1500);
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1126,9 +1173,15 @@ function SoignantsSection() {
           <h2 className="text-lg font-semibold">Professionnels de santé</h2>
           <p className="text-sm text-muted-foreground">{filtered.length} professionnels disponibles</p>
         </div>
-        <Button size="sm" className="rounded-lg gap-1.5">
-          <MapPin className="h-3.5 w-3.5" />
-          Près de chez moi
+        <Button 
+          size="sm" 
+          onClick={handleLocate}
+          disabled={isLocating}
+          variant={locationActive ? "default" : "outline"}
+          className={`rounded-lg gap-1.5 transition-all ${locationActive ? 'shadow-md shadow-primary/20' : ''}`}
+        >
+          <MapPin className={`h-3.5 w-3.5 ${isLocating ? 'animate-bounce' : ''}`} />
+          {locationActive ? "Moins de 5 km" : "Près de chez moi"}
         </Button>
       </div>
 
@@ -1172,12 +1225,19 @@ function SoignantsSection() {
             <Card className="border-border/40 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300 h-full group">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0 group-hover:ring-2 group-hover:ring-primary/20 transition-all">
-                      {item.image}
+                  <div 
+                    onClick={() => navigate(`/provider/${item.id}`)}
+                    className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                  >
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0 group-hover:ring-2 group-hover:ring-primary/20 transition-all overflow-hidden">
+                      {item.image.startsWith('http') ? (
+                        <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                      ) : (
+                        item.image
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{item.name}</p>
+                      <p className="text-sm font-medium hover:text-primary transition-colors">{item.name}</p>
                       <p className="text-xs text-muted-foreground">{item.specialty}</p>
                     </div>
                   </div>
@@ -1218,10 +1278,12 @@ function SoignantsSection() {
                   </div>
                 </div>
 
-                <Button className="w-full mt-3 rounded-lg h-9 text-xs gap-1.5">
-                  <CalendarPlus className="h-3.5 w-3.5" />
-                  Prendre rendez-vous
-                </Button>
+                <ProviderAvailability providerName={item.name} specialty={item.specialty} availability={item.availability}>
+                  <Button className="w-full mt-3 rounded-lg h-9 text-xs gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary transition-colors">
+                    <CalendarPlus className="h-3.5 w-3.5" />
+                    Voir les disponibilités
+                  </Button>
+                </ProviderAvailability>
               </CardContent>
             </Card>
           </motion.div>
@@ -1231,7 +1293,7 @@ function SoignantsSection() {
   );
 }
 
-function MesPatientsSection() {
+function MesPatientsSection({ onNavigateToPatient }: { onNavigateToPatient?: (id: string) => void }) {
   const patients: PatientInfo[] = [
     { id: 1, name: "Aïcha M.", age: 72, gender: "F", condition: "Diabète de type 2", lastVisit: "05/07/2025", nextVisit: "12/07/2025", phone: "+222 12 34 56 78", address: "Tevragh Zeina, Nouakchott" },
     { id: 2, name: "Mohamed L.", age: 58, gender: "M", condition: "Rééducation post-opératoire", lastVisit: "03/07/2025", nextVisit: "10/07/2025", phone: "+222 23 45 67 89", address: "Ksar, Nouakchott" },
@@ -1240,6 +1302,7 @@ function MesPatientsSection() {
     { id: 5, name: "Mariam T.", age: 80, gender: "F", condition: "Soins palliatifs", lastVisit: "02/07/2025", nextVisit: "09/07/2025", phone: "+222 56 78 90 12", address: "Sebkha, Nouakchott" },
   ];
 
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
 
   const filtered = patients.filter((p) =>
@@ -1254,10 +1317,6 @@ function MesPatientsSection() {
           <h2 className="text-lg font-semibold">Mes patients</h2>
           <p className="text-sm text-muted-foreground">{filtered.length} patients en cours de suivi</p>
         </div>
-        <Button size="sm" className="rounded-lg gap-1.5">
-          <Plus className="h-3.5 w-3.5" />
-          Ajouter un patient
-        </Button>
       </div>
 
       <div className="relative">
@@ -1278,6 +1337,8 @@ function MesPatientsSection() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.04 }}
+            onClick={() => onNavigateToPatient?.(item.id.toString())}
+            className="cursor-pointer"
           >
             <Card className="border-border/40 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300 h-full">
               <CardContent className="p-4">
@@ -1322,11 +1383,11 @@ function MesPatientsSection() {
                 </div>
 
                 <div className="flex gap-2 mt-3">
-                  <Button size="sm" className="flex-1 rounded-lg h-8 text-xs gap-1">
-                    <CalendarPlus className="h-3 w-3" />
-                    Planifier
+                  <Button size="sm" className="flex-1 rounded-lg h-8 text-xs gap-1" variant="outline">
+                    <History className="h-3 w-3" />
+                    Historique
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1 rounded-lg h-8 text-xs">
+                  <Button size="sm" className="flex-1 rounded-lg h-8 text-xs" onClick={(e) => { e.stopPropagation(); onNavigateToPatient?.(item.id.toString()); }}>
                     Voir dossier
                   </Button>
                 </div>
@@ -1369,10 +1430,12 @@ function MessagesSection({ role, user }: { role: UserRole; user: any }) {
           <h2 className="text-lg font-semibold">Messagerie</h2>
           <p className="text-sm text-muted-foreground">{conversations.filter(c => c.unread).length} conversations non lues</p>
         </div>
-        <Button size="sm" className="rounded-lg gap-1.5">
-          <Edit3 className="h-3.5 w-3.5" />
-          {role === "patient" ? "Nouveau message" : "Contacter un patient"}
-        </Button>
+        <NewMessageModal role={role}>
+          <Button size="sm" className="rounded-lg gap-1.5">
+            <Edit3 className="h-3.5 w-3.5" />
+            {role === "patient" ? "Nouveau message" : "Contacter un patient"}
+          </Button>
+        </NewMessageModal>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-0 bg-card border border-border/40 rounded-2xl overflow-hidden shadow-sm">
@@ -1712,5 +1775,338 @@ function LockIcon() {
       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
+  );
+}
+
+// ===================== DEMANDES SECTION =====================
+function DemandesSection() {
+  const { pendingDemandes, acceptDemande, rejectDemande } = useAppointments();
+
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold">Mes demandes</h2>
+          <p className="text-sm text-muted-foreground">Gérez les demandes de rendez-vous de vos patients</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Rechercher une demande..."
+            className="w-full h-10 pl-9 pr-4 rounded-xl bg-card border border-border/40 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="px-3 py-1 bg-primary/5 text-primary border-primary/20">
+            {pendingDemandes.length} en attente
+          </Badge>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {pendingDemandes.length === 0 ? (
+          <div className="text-center py-12 border border-dashed rounded-2xl border-border/50">
+            <p className="text-muted-foreground">Aucune demande en attente pour le moment.</p>
+          </div>
+        ) : (
+          pendingDemandes.map((demande, i) => (
+            <motion.div
+              key={demande.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+            >
+              <Card className="border-border/40 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                <div className="flex flex-col md:flex-row">
+                  <div className="p-6 flex-1 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
+                          {demande.patientName.split(" ").map((n: string) => n[0]).join("")}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg">{demande.patientName}</h3>
+                          <p className="text-sm text-muted-foreground">{demande.type}</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
+                        En attente
+                      </Badge>
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        <span>{demande.date}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        <span>{demande.time} ({demande.duration})</span>
+                      </div>
+                      <div className="sm:col-span-2 flex items-start gap-2 text-muted-foreground mt-2 bg-muted/30 p-3 rounded-lg border border-border/40">
+                        <FileText className="h-4 w-4 mt-0.5 shrink-0" />
+                        <p className="italic">"{demande.message}"</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-muted/10 p-6 border-t md:border-t-0 md:border-l border-border/40 flex md:flex-col items-center justify-center gap-3 min-w-[200px]">
+                    <Button
+                      onClick={() => acceptDemande(demande.id)}
+                      className="w-full gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      Accepter
+                    </Button>
+                    <Button
+                      onClick={() => rejectDemande(demande.id)}
+                      variant="outline"
+                      className="w-full gap-2 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Refuser
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ===================== PATIENT DETAILS SECTION =====================
+function PatientDetailsSection({ patientId, onBack }: { patientId: string; onBack: () => void }) {
+  const MOCK_PATIENTS: Record<string, any> = {
+    "1": {
+      id: "1",
+      name: "Aïcha M.",
+      age: 32,
+      bloodType: "O+",
+      allergies: ["Pénicilline"],
+      location: "Tevragh Zeina, Nouakchott",
+      phone: "+222 45 67 89 00",
+      email: "aicha.m@email.com",
+      lastVisit: "Il y a 2 jours",
+      condition: "Suivi post-opératoire",
+      medicalHistory: [
+        { id: "h1", date: "15 Mai 2026", type: "Chirurgie", description: "Appendicectomie sans complications", doctor: "Dr. Fall (Chirurgien)" },
+        { id: "h2", date: "10 Jan 2025", type: "Consultation", description: "Bilan annuel, tout est normal", doctor: "Dr. Sy (Généraliste)" },
+      ],
+      consultations: [
+        { id: "c1", date: "05 Juil 2026", type: "Suivi infirmier", status: "Terminé", notes: "Pansement refait. Bonne cicatrisation." },
+        { id: "c2", date: "20 Juin 2026", type: "Consultation pré-op", status: "Terminé", notes: "Validation pour chirurgie." },
+      ],
+      documents: [
+        { id: "d1", name: "Analyse_Sang_Juin2026.pdf", type: "Laboratoire", date: "18 Juin 2026" },
+        { id: "d2", name: "Compte_rendu_operatoire.pdf", type: "Chirurgie", date: "16 Mai 2026" },
+      ]
+    },
+    "2": {
+      id: "2",
+      name: "Mohamed L.",
+      age: 54,
+      bloodType: "A-",
+      allergies: ["Aucune"],
+      location: "Ksar, Nouakchott",
+      phone: "+222 33 44 55 66",
+      email: "mohamed.l@email.com",
+      lastVisit: "La semaine dernière",
+      condition: "Rééducation fonctionnelle",
+      medicalHistory: [
+        { id: "h1", date: "10 Mar 2026", type: "Traumatisme", description: "Entorse cheville droite", doctor: "Dr. Kane (Orthopédiste)" },
+      ],
+      consultations: [
+        { id: "c1", date: "30 Juin 2026", type: "Séance kiné", status: "Terminé", notes: "Progrès constatés sur la mobilité." },
+      ],
+      documents: [
+        { id: "d1", name: "Radiographie_Cheville.png", type: "Imagerie", date: "10 Mar 2026" },
+      ]
+    }
+  };
+
+  const patient = MOCK_PATIENTS[patientId] || MOCK_PATIENTS["1"];
+
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full">
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div className="flex-1">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{patient.name}</h1>
+            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
+              Actif
+            </Badge>
+          </div>
+          <p className="text-muted-foreground mt-1 flex items-center gap-2 text-sm">
+            <span>{patient.age} ans</span>
+            <span>•</span>
+            <span>{patient.bloodType}</span>
+            <span>•</span>
+            <span className="truncate">{patient.condition}</span>
+          </p>
+        </div>
+        <div className="hidden sm:flex gap-2">
+          <Button variant="outline" className="gap-2 rounded-xl">
+            <Calendar className="h-4 w-4" />
+            Nouveau RDV
+          </Button>
+          <Button className="gap-2 rounded-xl">
+            <FileText className="h-4 w-4" />
+            Ajouter un document
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Colonne de gauche: Infos générales */}
+        <div className="space-y-6">
+          <Card className="border-border/40 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                Informations du patient
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start gap-3">
+                <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">Adresse</p>
+                  <p className="text-sm text-muted-foreground">{patient.location}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">Téléphone</p>
+                  <p className="text-sm text-muted-foreground">{patient.phone}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Mail className="h-4 w-4 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">Email</p>
+                  <p className="text-sm text-muted-foreground">{patient.email}</p>
+                </div>
+              </div>
+              <Separator className="my-2" />
+              <div className="flex items-start gap-3">
+                <Shield className="h-4 w-4 text-destructive mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">Allergies</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {patient.allergies.map((a: string) => (
+                      <Badge key={a} variant="outline" className="bg-destructive/5 text-destructive border-destructive/20 text-xs">
+                        {a}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/40 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Activity className="h-5 w-5 text-primary" />
+                Dernières Constantes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center p-2 rounded-lg bg-muted/40">
+                <div className="flex items-center gap-2">
+                  <HeartPulse className="h-4 w-4 text-rose-500" />
+                  <span className="text-sm font-medium">Tension</span>
+                </div>
+                <span className="text-sm">12/8</span>
+              </div>
+              <div className="flex justify-between items-center p-2 rounded-lg bg-muted/40">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm font-medium">Pouls</span>
+                </div>
+                <span className="text-sm">72 bpm</span>
+              </div>
+              <p className="text-xs text-muted-foreground text-center mt-2">Mesuré le {patient.lastVisit}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Colonne de droite: Historique et Documents */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="border-border/40 shadow-sm">
+            <CardHeader className="pb-4 border-b border-border/40">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <History className="h-5 w-5 text-primary" />
+                Historique des consultations
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border/40">
+                {patient.consultations.map((consultation: any) => (
+                  <div key={consultation.id} className="p-4 sm:p-6 hover:bg-muted/20 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <Stethoscope className="h-4 w-4 text-primary" />
+                        <h4 className="font-semibold">{consultation.type}</h4>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {consultation.date}
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          {consultation.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground pl-6 border-l-2 border-primary/20 ml-2 mt-2">
+                      {consultation.notes}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/40 shadow-sm">
+            <CardHeader className="pb-4 border-b border-border/40 flex flex-row items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                Documents et Examens
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
+              <div className="grid sm:grid-cols-2 gap-4">
+                {patient.documents.map((doc: any) => (
+                  <div key={doc.id} className="flex items-start gap-3 p-3 rounded-xl border border-border/40 bg-card hover:border-primary/30 transition-colors cursor-pointer group">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate" title={doc.name}>{doc.name}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                        <span className="truncate">{doc.type}</span>
+                        <span>•</span>
+                        <span className="shrink-0">{doc.date}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
   );
 }

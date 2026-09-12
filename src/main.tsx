@@ -1,6 +1,4 @@
-import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
-import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { InstrumentationProvider } from "@/instrumentation.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
@@ -10,11 +8,13 @@ import { BrowserRouter, Route, Routes, useLocation, useMatches } from "react-rou
 import "./index.css";
 import "./types/global.d.ts";
 import { Navbar } from "@/components/Navbar";
+import "./i18n";
 
 // Lazy load route components for better code splitting
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
+const ProviderDetails = lazy(() => import("./pages/ProviderDetails.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -26,7 +26,8 @@ function RouteLoading() {
   );
 }
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+const convexUrl = import.meta.env.VITE_CONVEX_URL || "https://dummy-url.convex.cloud";
+const convex = new ConvexReactClient(convexUrl);
 
 function RouteSyncer() {
   const location = useLocation();
@@ -53,13 +54,21 @@ function RouteSyncer() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <VlyToolbar />
     <InstrumentationProvider>
       <ConvexAuthProvider client={convex}>
         <BrowserRouter>
           <RouteSyncer />
           <Routes>
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={
+              <Suspense fallback={<RouteLoading />}>
+                <Dashboard />
+              </Suspense>
+            } />
+            <Route path="/provider/:id" element={
+              <Suspense fallback={<RouteLoading />}>
+                <ProviderDetails />
+              </Suspense>
+            } />
             <Route path="*" element={
               <>
                 <Navbar />

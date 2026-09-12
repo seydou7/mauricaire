@@ -1,0 +1,200 @@
+{
+  "app": {
+    "title": "MauriCare",
+    "tagline": "Vos soins à domicile, en toute confiance.",
+    "loading": "Chargement..."
+  },
+  "roles": {
+    "patient": "Patient",
+    "caregiver": "Soignant",
+    "admin": "Administrateur"
+  },
+  "nav": {
+    "home": "Accueil",
+    "dashboard": "Tableau de bord",
+    "logout": "Déconnexion"
+  },
+  "payment": {
+    "cash": "Espèces",
+    "mobileMoney": "Mobile Money",
+    "comingSoon": "Bientôt disponible"
+  },
+  "landing": {
+    "hero": {
+      "badge": "🏥 Plateforme de soins à domicile en Mauritanie",
+      "title_1": "Des soins de qualité, ",
+      "title_2": "à votre porte",
+      "subtitle": "MauriCare connecte les patients en Mauritanie avec des professionnels de santé qualifiés pour des soins à domicile fiables, accessibles et humains.",
+      "btn_search": "Je cherche un soignant",
+      "btn_offer": "Je propose mes services",
+      "check_1": "Soignants vérifiés",
+      "check_2": "Paiement sécurisé",
+      "check_3": "Disponible 7j/7"
+    },
+    "stats": {
+      "stat1_value": "150+",
+      "stat1_label": "Professionnels inscrits",
+      "stat2_value": "500+",
+      "stat2_label": "Patients accompagnés",
+      "stat3_value": "12",
+      "stat3_label": "Villes couvertes",
+      "stat4_value": "98%",
+      "stat4_label": "Satisfaction"
+    },
+    "features": {
+      "badge": "Fonctionnalités",
+      "title": "Tout ce dont vous avez besoin",
+      "subtitle": "Une plateforme complète pour faciliter la mise en relation et le suivi des soins à domicile.",
+      "items": [
+        {
+          "title": "Recherche intelligente",
+          "desc": "Trouvez le professionnel idéal près de chez vous par spécialité, disponibilité et tarifs."
+        },
+        {
+          "title": "Réservation simplifiée",
+          "desc": "Planifiez vos séances de soins en quelques clics, sans paperasse ni files d'attente."
+        },
+        {
+          "title": "Messagerie intégrée",
+          "desc": "Échangez directement avec les soignants pour discuter des besoins spécifiques du patient."
+        },
+        {
+          "title": "Profil vérifié",
+          "desc": "Chaque professionnel est authentifié avec diplômes et certifications vérifiés."
+        },
+        {
+          "title": "Géolocalisation",
+          "desc": "Visualisez les soignants disponibles dans votre région et estimez les temps de trajet."
+        },
+        {
+          "title": "Évaluations transparentes",
+          "desc": "Consultez les avis et notations des autres patients pour choisir en toute confiance."
+        }
+      ]
+    },
+    "guide": {
+      "badge": "Guide",
+      "title": "Comment ça marche",
+      "subtitle": "Que vous soyez patient ou professionnel de santé, voici comment MauriCare simplifie votre quotidien.",
+      "patient": {
+        "title": "Pour les patients",
+        "steps": [
+          {
+            "title": "Créez votre profil",
+            "desc": "Inscrivez-vous et renseignez vos besoins de soins."
+          },
+          {
+            "title": "Recherchez un soignant",
+            "desc": "Parcourez les profils vérifiés près de chez vous."
+          },
+          {
+            "title": "Réservez une séance",
+            "desc": "Choisissez la date et l'horaire qui vous conviennent."
+          },
+          {
+            "title": "Recevez des soins à domicile",
+            "desc": "Le professionnel se déplace chez vous en toute sérénité."
+          }
+        ]
+      },
+      "provider": {
+        "title": "Pour les professionnels",
+        "steps": [
+          {
+            "title": "Inscrivez-vous",
+            "desc": "Créez votre profil avec vos diplômes et certifications."
+          },
+          {
+            "title": "Définissez vos disponibilités",
+            "desc": "Indiquez vos créneaux et votre zone d'intervention."
+          },
+          {
+            "title": "Recevez des demandes",
+            "desc": "Acceptez les patients qui correspondent à votre profil."
+          },
+          {
+            "title": "Soignez et gagnez",
+            "desc": "Prodiguez des soins et recevez votre rémunération."
+          }
+        ]
+      }
+    },
+    "professionals": {
+      "badge": "Professionnels",
+      "title": "Trouvez le bon professionnel",
+      "subtitle": "Notre plateforme regroupe une large gamme de professionnels de santé pour répondre à tous vos besoins.",
+      "items": [
+        {
+          "title": "Infirmiers",
+          "desc": "Soins infirmiers, pansements, injections"
+        },
+        {
+          "title": "Aides-soignants",
+          "desc": "Assistance quotidienne, hygiène, confort"
+        },
+        {
+          "title": "Médecins",
+          "desc": "Consultations, suivis médicaux"
+        },
+        {
+          "title": "Kinésithérapeutes",
+          "desc": "Rééducation, massages thérapeutiques"
+        }
+      ]
+    },
+    "testimonials": {
+      "badge": "Témoignages",
+      "title": "Ce qu'ils disent de nous",
+      "items": [
+        {
+          "name": "Aïcha M.",
+          "role": "Patiente, Nouakchott",
+          "text": "Grâce à MauriCare, j'ai trouvé une infirmière formidable pour ma mère. Les soins à domicile ont changé sa qualité de vie."
+        },
+        {
+          "name": "Dr. Sidi O.",
+          "role": "Médecin généraliste",
+          "text": "MauriCare me permet d'atteindre des patients qui ne peuvent pas se déplacer. La plateforme est intuitive et fiable."
+        },
+        {
+          "name": "Fatimata D.",
+          "role": "Infirmière, Nouadhibou",
+          "text": "Je peux enfin exercer mon métier avec flexibilité tout en étant payée équitablement. Une révolution pour les soignants en Mauritanie."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Prêt à rejoindre MauriCare ?",
+      "subtitle": "Que vous ayez besoin de soins ou que vous souhaitiez offrir vos services, rejoignez la première plateforme de soins à domicile en Mauritanie.",
+      "btn_start": "Commencer maintenant",
+      "btn_contact": "Contactez-nous"
+    },
+    "footer": {
+      "desc": "Connecter les patients et les professionnels de santé en Mauritanie pour des soins à domicile accessibles à tous.",
+      "platform": "Plateforme",
+      "features": "Fonctionnalités",
+      "how_it_works": "Comment ça marche",
+      "register": "S'inscrire",
+      "contact": "Contact",
+      "rights": "Tous droits réservés.",
+      "made_with": "Fait avec",
+      "for": "pour la Mauritanie"
+    }
+  },
+  "auth": {
+    "title": "Bienvenue sur MauriCare",
+    "subtitle": "Entrez votre email pour vous connecter ou créer un compte",
+    "email_placeholder": "prenom@exemple.com",
+    "or": "Ou",
+    "guest_login": "Continuer en tant qu'invité",
+    "verify_title": "Vérifiez votre email",
+    "verify_subtitle_1": "Nous avons envoyé un code à",
+    "error_wrong_code": "Le code de vérification est incorrect.",
+    "not_received": "Vous n'avez pas reçu de code ?",
+    "retry": "Réessayer",
+    "verify_btn": "Vérifier le code",
+    "verifying_btn": "Vérification...",
+    "another_email": "Utiliser un autre email",
+    "footer": "Soins à domicile en Mauritanie"
+  }
+}

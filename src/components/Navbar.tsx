@@ -4,6 +4,7 @@ import logo from "@/assets/logo.svg";
 import { Heart, LogOut, Menu, Shield, User, X } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 export function Navbar() {
   const { isAuthenticated, signOut, user } = useAuth();
@@ -62,8 +63,9 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Auth buttons */}
+        {/* Auth buttons & Lang */}
         <div className="hidden md:flex items-center gap-3">
+          <LanguageSwitcher />
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
               <Link to="/dashboard">
@@ -137,6 +139,9 @@ export function Navbar() {
               Comment ça marche
             </Link>
             <div className="border-t border-border/40 my-2" />
+            <div className="px-3 py-2.5">
+              <LanguageSwitcher />
+            </div>
             {isAuthenticated ? (
               <>
                 <Link
