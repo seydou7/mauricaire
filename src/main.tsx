@@ -15,6 +15,8 @@ const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const ProviderDetails = lazy(() => import("./pages/ProviderDetails.tsx"));
+const AdminPage = lazy(() => import("./pages/Admin.tsx"));
+const AcceptInvitation = lazy(() => import("./pages/AcceptInvitation.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -69,13 +71,23 @@ createRoot(document.getElementById("root")!).render(
                 <ProviderDetails />
               </Suspense>
             } />
+            <Route path="/admin" element={
+              <Suspense fallback={<RouteLoading />}>
+                <AdminPage />
+              </Suspense>
+            } />
+            <Route path="/circle/invite/:token" element={
+              <Suspense fallback={<RouteLoading />}>
+                <AcceptInvitation />
+              </Suspense>
+            } />
             <Route path="*" element={
               <>
                 <Navbar />
                 <Suspense fallback={<RouteLoading />}>
                   <Routes>
                     <Route path="/" element={<Landing />} />
-                    <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
+                    <Route path="/auth" element={<AuthPage />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>

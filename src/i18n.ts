@@ -20,19 +20,42 @@ i18n
   .init({
     resources,
     fallbackLng: 'fr',
+    supportedLngs: ['fr', 'ar'],
     interpolation: {
       escapeValue: false, // react already safes from xss
     },
+    detection: {
+      order: ['localStorage', 'navigator'],
+      lookupLocalStorage: 'i18nextLng',
+      caches: ['localStorage'],
+    },
   });
 
-// Update the `dir` attribute on the html element whenever the language changes
+export function getNormalizedLanguage(lng?: string): 'ar' | 'fr' {
+  const code = (lng || i18n.language || 'fr').toLowerCase();
+  return code.startsWith('ar') ? 'ar' : 'fr';
+}
+
+export function syncDocumentDirection(lng?: string): void {
+  const norm = getNormalizedLanguage(lng);
+  const dir = norm === 'ar' ? 'rtl' : 'ltr';
+  if (typeof document !== 'undefined') {
+    document.documentElement.dir = dir;
+    document.documentElement.lang = norm;
+    try {
+      localStorage.setItem('i18nextLng', norm);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+// Update the `dir` and `lang` attributes on the html element whenever the language changes
 i18n.on('languageChanged', (lng) => {
-  document.documentElement.dir = i18n.dir(lng);
-  document.documentElement.lang = lng;
+  syncDocumentDirection(lng);
 });
 
 // Set initial direction
-document.documentElement.dir = i18n.dir(i18n.language);
-document.documentElement.lang = i18n.language || 'fr';
+syncDocumentDirection(i18n.language);
 
 export default i18n;

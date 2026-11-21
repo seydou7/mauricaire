@@ -1,111 +1,112 @@
-import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 
-export type AppointmentStatus = "À venir" | "Terminé" | "Annulé";
+export type AppointmentStatus = "en_attente" | "confirme" | "termine" | "annule";
 
 export interface Appointment {
+  _id: string;
   id: string;
-  day: string;
+  day?: string;
+  date: string;
   time: string;
   name: string;
+  providerId?: string;
+  providerName?: string;
+  specialty?: string;
+  serviceType?: string;
+  image?: string;
+  consultationFee?: number;
+  patient?: string;
+  patientName?: string;
+  patientPhone?: string;
   type: string;
   duration: string;
-  status?: AppointmentStatus;
+  status: AppointmentStatus;
+  address?: string;
+  notes?: string;
+  cancellationReason?: string;
+  recurrenceSeriesId?: string;
+  servicePrice?: number;
+  serviceSnapshot?: {
+    name: string;
+    price: number;
+    duration: number;
+  };
+  occurrenceIndex?: number;
+  beneficiaryId?: string;
+  bookedByUserId?: string;
+  bookedByName?: string;
 }
 
 export interface Demande {
+  _id: string;
   id: string;
+  patientId: string;
   patientName: string;
+  patientPhone: string;
+  patientEmail: string;
+  patientImage: string;
+  serviceType: string;
   type: string;
   date: string;
   time: string;
   duration: string;
+  notes: string;
   message: string;
-  status: "pending" | "accepted" | "rejected";
+  status: AppointmentStatus;
+  address: string;
 }
 
-const DEFAULT_PRO_APPOINTMENTS: Appointment[] = [
-  { id: "a1", day: "Lun 14", time: "09:00", name: "Aïcha M.", type: "Consultation diabète", duration: "1h" },
-  { id: "a2", day: "Lun 14", time: "11:00", name: "Mohamed L.", type: "Rééducation post-op", duration: "45min" },
-  { id: "a3", day: "Mer 16", time: "14:30", name: "Mariam T.", type: "Soins palliatifs", duration: "1h" },
-  { id: "a4", day: "Ven 18", time: "10:00", name: "Fatimata D.", type: "Consultation hypertension", duration: "30min" },
-  { id: "a5", day: "Sam 19", time: "08:30", name: "Sidi O.", type: "Kinésithérapie lombaire", duration: "45min" },
-];
-
-const DEFAULT_DEMANDES: Demande[] = [
-  {
-    id: "d1",
-    patientName: "Oumar B.",
-    type: "Consultation initiale",
-    date: "Mar 15",
-    time: "10:00",
-    duration: "45min",
-    message: "Bonjour, je souhaite un rendez-vous pour des douleurs au dos.",
-    status: "pending",
-  },
-  {
-    id: "d2",
-    patientName: "Khadija S.",
-    type: "Suivi mensuel",
-    date: "Jeu 17",
-    time: "15:30",
-    duration: "30min",
-    message: "Rendez-vous de suivi habituel.",
-    status: "pending",
-  },
-];
-
 export function useAppointments() {
-  const [appointments, setAppointments] = useState<Appointment[]>(() => {
-    const saved = localStorage.getItem("proAppointments");
-    return saved ? JSON.parse(saved) : DEFAULT_PRO_APPOINTMENTS;
-  });
+  const pendingRequestsQuery = useQuery(api.appointments.getPendingRequests);
+  const providerScheduleQuery = useQuery(api.appointments.getProviderSchedule);
+  const patientAppointmentsQuery = useQuery(api.appointments.getPatientAppointments, {});
 
-  const [demandes, setDemandes] = useState<Demande[]>(() => {
-    const saved = localStorage.getItem("proDemandes");
-    return saved ? JSON.parse(saved) : DEFAULT_DEMANDES;
-  });
+  const acceptMutation = useMutation(api.appointments.accept);
+  const rejectMutation = useMutation(api.appointments.reject);
+  const cancelMutation = useMutation(api.appointments.cancel);
 
-  useEffect(() => {
-    localStorage.setItem("proAppointments", JSON.stringify(appointments));
-  }, [appointments]);
+  const pendingDemandes: Demande[] = ((pendingRequestsQuery || []) as any) as Demande[];
+  const proAppointments: Appointment[] = ((providerScheduleQuery || []) as any) as Appointment[];
+  const patientAppointments: Appointment[] = ((patientAppointmentsQuery || []) as any) as Appointment[];
 
-  useEffect(() => {
-    localStorage.setItem("proDemandes", JSON.stringify(demandes));
-  }, [demandes]);
-
-  const acceptDemande = (id: string) => {
-    const demande = demandes.find((d) => d.id === id);
-    if (!demande) return;
-
-    // Update demande status
-    setDemandes(demandes.map((d) => (d.id === id ? { ...d, status: "accepted" } : d)));
-
-    // Create new appointment
-    const newAppointment: Appointment = {
-      id: `a_${Date.now()}`,
-      day: demande.date,
-      time: demande.time,
-      name: demande.patientName,
-      type: demande.type,
-      duration: demande.duration,
-      status: "À venir",
-    };
-
-    setAppointments((prev) => [...prev, newAppointment].sort((a, b) => {
-      // Sort loosely based on time (for prototype)
-      return a.day.localeCompare(b.day) || a.time.localeCompare(b.time);
-    }));
+  const acceptDemande = async (id: string) => {
+    return await acceptMutation({ appointmentId: id as Id<"appointments"> });
   };
 
-  const rejectDemande = (id: string) => {
-    setDemandes(demandes.map((d) => (d.id === id ? { ...d, status: "rejected" } : d)));
+  const rejectDemande = async (id: string, reason?: string) => {
+    return await rejectMutation({
+      appointmentId: id as Id<"appointments">,
+      reason: reason || "Refusé par le praticien",
+    });
+  };
+
+  const cancelAppointment = async (id: string, reason?: string) => {
+    return await cancelMutation({
+      appointmentId: id as Id<"appointments">,
+      reason,
+    });
   };
 
   return {
-    appointments,
-    demandes,
-    pendingDemandes: demandes.filter((d) => d.status === "pending"),
+    // Professional view
+    demandes: pendingDemandes,
+    pendingDemandes,
+    appointments: proAppointments,
+    proAppointments,
     acceptDemande,
     rejectDemande,
+
+    // Patient view
+    patientAppointments,
+
+    // Common
+    cancelAppointment,
+
+    // Loading states
+    isLoadingPending: pendingRequestsQuery === undefined,
+    isLoadingSchedule: providerScheduleQuery === undefined,
+    isLoadingPatientAppointments: patientAppointmentsQuery === undefined,
   };
 }
