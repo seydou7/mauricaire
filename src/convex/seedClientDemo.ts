@@ -145,25 +145,61 @@ export const getDatabaseAuditCounts = query({
  */
 export const resetAndSeedClientDemo = mutation({
   args: {
-    confirmReset: v.literal("CONFIRM_DEV_DEMO_RESET_2026"),
+    confirmReset: v.union(
+      v.literal("CONFIRM_DEV_DEMO_RESET_2026"),
+      v.literal("CONFIRM_UAT_DEMO_RESET_2026")
+    ),
   },
   handler: async (ctx, args) => {
     // =========================================================================
-    // 1. STRICT ENVIRONMENT SAFEGUARD
+    // 1. STRICT ENVIRONMENT SAFEGUARD & MUTUAL EXCLUSION
     // =========================================================================
     const convexUrl =
       process.env.CONVEX_CLOUD_URL ||
+      process.env.CONVEX_SITE_URL ||
       process.env.CONVEX_URL ||
       process.env.NEXT_PUBLIC_CONVEX_URL ||
       "";
 
+    const deploymentEnv = process.env.CONVEX_DEPLOYMENT || "";
+
+    // ABSOLUTE PRODUCTION RULE: NEVER ALLOW UNDER ANY CIRCUMSTANCES
     if (
       convexUrl.includes("opulent-oyster-53") ||
-      convexUrl.includes("colorless-kookabura-292")
+      deploymentEnv.includes("opulent-oyster-53")
     ) {
       throw new Error(
-        "CRITICAL SECURITY GUARD: Reset and seed is STRICTLY FORBIDDEN on Production (opulent-oyster-53) or Client UAT (colorless-kookabura-292)!"
+        "CRITICAL SECURITY GUARD: Reset and seed is STRICTLY AND PERMANENTLY FORBIDDEN on Production (opulent-oyster-53)!"
       );
+    }
+
+    let verifiedEnvironment: "DEV" | "UAT";
+
+    if (args.confirmReset === "CONFIRM_DEV_DEMO_RESET_2026") {
+      if (
+        convexUrl.includes("colorless-kookabura-292") ||
+        convexUrl.includes("opulent-oyster-53") ||
+        deploymentEnv.includes("colorless-kookabura-292") ||
+        deploymentEnv.includes("opulent-oyster-53")
+      ) {
+        throw new Error(
+          "SECURITY GUARD: CONFIRM_DEV_DEMO_RESET_2026 can only be executed on local DEV, not on remote UAT or Production."
+        );
+      }
+      verifiedEnvironment = "DEV";
+    } else if (args.confirmReset === "CONFIRM_UAT_DEMO_RESET_2026") {
+      const isUat =
+        convexUrl.includes("colorless-kookabura-292") ||
+        deploymentEnv.includes("colorless-kookabura-292");
+
+      if (!isUat) {
+        throw new Error(
+          "SECURITY GUARD: CONFIRM_UAT_DEMO_RESET_2026 requires verified deployment identity 'colorless-kookabura-292'. Aborting."
+        );
+      }
+      verifiedEnvironment = "UAT";
+    } else {
+      throw new Error("Invalid confirmation token");
     }
 
     // =========================================================================
