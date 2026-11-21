@@ -28,7 +28,7 @@ function RouteLoading() {
   );
 }
 
-const convexUrl = import.meta.env.VITE_CONVEX_URL || "https://dummy-url.convex.cloud";
+const convexUrl = import.meta.env.VITE_CONVEX_URL || "https://colorless-kookabura-292.convex.cloud";
 const convex = new ConvexReactClient(convexUrl);
 
 function RouteSyncer() {
